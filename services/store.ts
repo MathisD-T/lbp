@@ -1,6 +1,6 @@
 import { ProjectItem } from '../types';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000';
+const API_URL = import.meta.env.VITE_API_URL || (typeof window !== 'undefined' ? window.location.origin : '');
 const ADMIN_TOKEN = import.meta.env.VITE_ADMIN_TOKEN || '';
 
 const absolutify = (url: string) =>
