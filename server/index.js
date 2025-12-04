@@ -5,6 +5,7 @@ import cors from 'cors';
 import Database from 'better-sqlite3';
 import dotenv from 'dotenv';
 import multer from 'multer';
+import nodemailer from 'nodemailer';
 
 dotenv.config();
 
@@ -13,6 +14,9 @@ const ADMIN_TOKEN = process.env.ADMIN_TOKEN || 'changeme';
 if (!process.env.ADMIN_TOKEN) {
   console.warn('[API] ADMIN_TOKEN non défini, utilisation du token par défaut "changeme".');
 }
+const MAIL_USER = process.env.HOTMAIL_USER;
+const MAIL_PASS = process.env.HOTMAIL_PASS;
+const MAIL_TO = process.env.MAIL_TO || process.env.HOTMAIL_USER;
 const dataDir = path.join(process.cwd(), 'data');
 const dbPath = path.join(dataDir, 'db.sqlite');
 
@@ -140,6 +144,19 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage });
 
+const transporter = nodemailer.createTransport({
+  service: 'hotmail',
+  auth: {
+    user: MAIL_USER,
+    pass: MAIL_PASS
+  }
+});
+
+if (!MAIL_USER || !MAIL_PASS || !MAIL_TO) {
+  console.warn('[API] HOTMAIL_USER/HOTMAIL_PASS/MAIL_TO manquants : /api/contact renverra 500.');
+}
+
+
 app.get('/', (_req, res) => {
   res.send('API Les Beaux Projets - endpoints: GET /api/health, GET /api/projects, POST /api/projects (token), DELETE /api/projects/:id (token)');
 });
@@ -200,6 +217,33 @@ app.post('/api/projects', requireAuth, (req, res) => {
     }
     res.status(201).json(created);
   });
+});
+
+app.post('/api/contact', async (req, res) => {
+  const { name, phone, subject, message } = req.body || {};
+  if (!name || !message || !MAIL_USER || !MAIL_PASS || !MAIL_TO) {
+    return res.status(400).json({ error: 'Champs requis manquants ou SMTP non configur�.' });
+  }
+
+  const mailOptions = {
+    from: MAIL_USER,
+    to: MAIL_TO,
+    subject: subject ? `Contact - ${subject}` : 'Nouveau message de contact',
+    text: `Nom: ${name}
+Telephone: ${phone || 'N/A'}
+Sujet: ${subject || 'N/A'}
+
+Message:
+${message}`
+  };
+
+  try {
+    await transporter.sendMail(mailOptions);
+    res.status(200).json({ status: 'ok' });
+  } catch (err) {
+    console.error('SMTP error', err);
+    res.status(500).json({ error: "Impossible d'envoyer le mail pour le moment." });
+  }
 });
 
 app.delete('/api/projects/:id', requireAuth, (req, res) => {

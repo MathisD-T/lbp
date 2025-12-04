@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, Link } from 'react-router-dom';
-import { ArrowRight, ArrowLeft, Check, Plus, CheckCircle } from 'lucide-react';
+import { ArrowRight, ArrowLeft, Check, Plus, CheckCircle, Info } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { sendEstimateEmail } from '../services/email';
 import { Button } from '../components/UI';
@@ -21,6 +21,9 @@ export const Estimate: React.FC = () => {
     name: '',
     email: '',
     phone: '',
+    address: '',
+    timeframe: '',
+    hasPlans: '',
     message: ''
   });
 
@@ -48,43 +51,43 @@ export const Estimate: React.FC = () => {
     setTimeout(() => setStep(3), 200);
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!formData.name || !formData.email || !formData.message) return;
     
     setIsSubmitting(true);
     setError('');
     
-    // Mapping to legacy data structure for compatibility
-    const submissionData = {
-      firstName: formData.name.split(' ')[0],
-      lastName: formData.name.split(' ').slice(1).join(' ') || '',
-      phone: formData.phone,
-      email: formData.email,
-      preferredContact: 'email',
-      address: '',
-      city: '',
-      postalCode: '',
-      propertyType: '',
-      propertyStatus: '',
-      constructionYear: '',
-      serviceType: formData.type,
-      budget: formData.budget,
-      timeframe: '',
-      hasPlans: '',
-      description: formData.message,
-      source: ''
-    };
+    try {
+      // Mapping to legacy data structure for compatibility
+      const submissionData = {
+        firstName: formData.name.split(' ')[0],
+        lastName: formData.name.split(' ').slice(1).join(' ') || '',
+        phone: formData.phone,
+        email: formData.email,
+        preferredContact: 'email',
+        address: formData.address,
+        city: formData.address,
+        postalCode: '',
+        propertyType: '',
+        propertyStatus: '',
+        constructionYear: '',
+        serviceType: formData.type,
+        budget: formData.budget,
+        timeframe: formData.timeframe,
+        hasPlans: formData.hasPlans,
+        description: formData.message,
+        source: ''
+      };
 
-    sendEstimateEmail(submissionData)
-      .then(() => {
-        setIsSubmitted(true);
-        window.scrollTo(0,0);
-      })
-      .catch((err) => {
-        console.error(err);
-        setError("Envoi impossible pour le moment. Merci de réessayer.");
-      })
-      .finally(() => setIsSubmitting(false));
+      await sendEstimateEmail(submissionData as any);
+      setIsSubmitted(true);
+      window.scrollTo(0,0);
+    } catch (err) {
+      console.error(err);
+      setError("Envoi impossible pour le moment. Merci de réessayer.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (isSubmitted) {
@@ -131,6 +134,23 @@ export const Estimate: React.FC = () => {
            <div className="font-sans text-gray-500 text-xs uppercase tracking-widest font-bold">
              Sur 0{totalSteps}
            </div>
+        </div>
+
+        <div className="mb-12 p-6 rounded-2xl border border-white/10 bg-white/5 text-white flex gap-4 items-start">
+          <div className="mt-1 text-primary">
+            <Info size={24} />
+          </div>
+          <div className="space-y-2 text-sm md:text-base text-gray-200">
+            <p className="font-heading font-bold uppercase tracking-widest text-xs text-primary">Infos utiles pour une soumission rapide</p>
+            <ul className="list-disc list-inside space-y-1 text-gray-300">
+              <li>Nom complet, courriel et téléphone pour vous joindre.</li>
+              <li>Type de projet (rénovation, neuf, cuisine, agrandissement, etc.).</li>
+              <li>Budget estimé et échéancier souhaité.</li>
+              <li>Adresse du projet ou secteur approximatif.</li>
+              <li>Brève description : superficie, pièces concernées, matériaux envisagés.</li>
+              <li>Si possible, mentionnez s'il existe des plans, croquis ou photos de référence.</li>
+            </ul>
+          </div>
         </div>
 
         <form onSubmit={(e) => e.preventDefault()}>
@@ -248,19 +268,62 @@ export const Estimate: React.FC = () => {
                           Téléphone
                         </label>
                      </div>
+                     <div className="group relative">
+                        <input 
+                          type="text" 
+                          id="address"
+                          className="peer w-full bg-transparent border-b border-white/20 py-4 text-xl text-white focus:outline-none focus:border-primary transition-colors font-sans"
+                          placeholder=" "
+                          value={formData.address}
+                          onChange={(e) => handleChange('address', e.target.value)}
+                        />
+                        <label htmlFor="address" className="absolute left-0 top-4 text-gray-500 text-lg transition-all peer-focus:-top-6 peer-focus:text-xs peer-focus:text-primary peer-not-placeholder-shown:-top-6 peer-not-placeholder-shown:text-xs peer-not-placeholder-shown:text-primary uppercase font-bold tracking-widest pointer-events-none">
+                          Adresse ou secteur du projet
+                        </label>
+                     </div>
+                     <div className="group relative">
+                        <input 
+                          type="text" 
+                          id="timeframe"
+                          className="peer w-full bg-transparent border-b border-white/20 py-4 text-xl text-white focus:outline-none focus:border-primary transition-colors font-sans"
+                          placeholder=" "
+                          value={formData.timeframe}
+                          onChange={(e) => handleChange('timeframe', e.target.value)}
+                        />
+                        <label htmlFor="timeframe" className="absolute left-0 top-4 text-gray-500 text-lg transition-all peer-focus:-top-6 peer-focus:text-xs peer-focus:text-primary peer-not-placeholder-shown:-top-6 peer-not-placeholder-shown:text-xs peer-not-placeholder-shown:text-primary uppercase font-bold tracking-widest pointer-events-none">
+                          Échéancier souhaité
+                        </label>
+                     </div>
                    </div>
-                   <div className="group relative">
-                      <textarea 
-                        id="message"
-                        required
-                        className="peer w-full bg-transparent border-b border-white/20 py-4 text-xl text-white focus:outline-none focus:border-primary transition-colors font-sans h-40 resize-none"
-                        placeholder=" "
-                        value={formData.message}
-                        onChange={(e) => handleChange('message', e.target.value)}
-                      ></textarea>
-                      <label htmlFor="message" className="absolute left-0 top-4 text-gray-500 text-lg transition-all peer-focus:-top-6 peer-focus:text-xs peer-focus:text-primary peer-not-placeholder-shown:-top-6 peer-not-placeholder-shown:text-xs peer-not-placeholder-shown:text-primary uppercase font-bold tracking-widest pointer-events-none">
-                        Détails du projet (Beaucoup de détails)
-                      </label>
+                   <div className="space-y-10">
+                      <div className="group relative">
+                        <label className="text-gray-500 text-xs uppercase tracking-widest font-bold block mb-3">Plans / photos disponibles ?</label>
+                        <div className="flex gap-4">
+                          {['Oui', 'Non'].map(choice => (
+                            <button
+                              key={choice}
+                              type="button"
+                              onClick={() => handleChange('hasPlans', choice)}
+                              className={`px-4 py-3 border rounded-full text-sm font-bold uppercase tracking-widest transition-colors ${formData.hasPlans === choice ? 'border-primary bg-primary text-black' : 'border-white/20 text-white hover:border-white'}`}
+                            >
+                              {choice}
+                            </button>
+                          ))} 
+                        </div>
+                      </div>
+                      <div className="group relative">
+                        <textarea 
+                          id="message"
+                          required
+                          className="peer w-full bg-transparent border-b border-white/20 py-4 text-xl text-white focus:outline-none focus:border-primary transition-colors font-sans h-40 resize-none"
+                          placeholder=" "
+                          value={formData.message}
+                          onChange={(e) => handleChange('message', e.target.value)}
+                        ></textarea>
+                        <label htmlFor="message" className="absolute left-0 top-4 text-gray-500 text-lg transition-all peer-focus:-top-6 peer-focus:text-xs peer-focus:text-primary peer-not-placeholder-shown:-top-6 peer-not-placeholder-shown:text-xs peer-not-placeholder-shown:text-primary uppercase font-bold tracking-widest pointer-events-none">
+                          Détails du projet (Beaucoup de détails)
+                        </label>
+                      </div>
                    </div>
                  </div>
                </motion.div>
